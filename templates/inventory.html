@@ -1,0 +1,500 @@
+{% extends "base.html" %}
+
+{% block title %}Stok Yönetimi - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Stok Yönetimi</h1>
+            <p class="text-gray-400 mt-1">Envanter takibi ve stok yönetimi</p>
+        </div>
+        <button onclick="showAddModal()" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i>Stok Ekle
+        </button>
+    </div>
+
+    <!-- Low Stock Alerts -->
+    {% if low_stock %}
+    <div class="mb-8">
+        <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-red-400"></i>
+                </div>
+                <div>
+                    <h3 class="text-red-400 font-semibold">Düşük Stok Uyarısı</h3>
+                    <p class="text-red-300/70 text-sm">{{ low_stock|length }} ürün kritik seviyenin altında</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {% for item in low_stock %}
+                <div class="bg-surface rounded-lg p-3 flex justify-between items-center">
+                    <div>
+                        <p class="text-white font-medium">{{ item.ingredient_name }}</p>
+                        <p class="text-red-400 text-sm">{{ item.quantity }} {{ item.unit }} / Min: {{ item.min_stock }}</p>
+                    </div>
+                    <button onclick="editStock('{{ item.id }}')" class="p-2 bg-red-500/20 rounded-lg text-red-400 hover:bg-red-500/30 transition">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+<!-- Inventory Table -->
+<div class="bg-secondary rounded-2xl border border-gray-700 overflow-hidden shadow-lg">
+
+    <!-- TOP BAR -->
+    <div class="p-6 border-b border-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+        <div>
+            <h2 class="text-xl font-semibold text-white">
+                Tüm Stoklar
+            </h2>
+
+            <p class="text-sm text-gray-400 mt-1">
+                Envanterde bulunan tüm ürünleri yönetin
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+
+            <div class="relative">
+
+                <input
+                    type="text"
+                    id="stock-search"
+                    placeholder="Stok ara..."
+                    class="w-64 pl-10 pr-4 py-2.5 bg-surface rounded-xl text-white placeholder-gray-500 border border-gray-600 focus:border-primary focus:outline-none"
+                >
+
+                <i class="fas fa-search absolute left-3 top-3 text-gray-500"></i>
+
+            </div>
+
+            <div class="px-4 py-2 bg-surface rounded-xl border border-gray-700 text-sm text-gray-300">
+                {{ items|length }} ürün
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TABLE -->
+    <div class="overflow-x-auto">
+
+        <table class="w-full min-w-[1150px]">
+
+            <!-- HEAD -->
+            <thead class="bg-surface border-b border-gray-700">
+
+                <tr>
+
+                    <th class="text-left px-6 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Malzeme
+                    </th>
+
+                    <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Miktar
+                    </th>
+
+                    <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Birim
+                    </th>
+
+                    <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Kritik Seviye
+                    </th>
+
+                    <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Durum
+                    </th>
+
+                    <th class="text-left px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Tedarikçi
+                    </th>
+
+                    <th class="text-center px-6 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        İşlemler
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <!-- BODY -->
+            <tbody id="stock-table" class="divide-y divide-gray-700">
+
+                {% for item in items %}
+
+                <tr
+                    data-item-id="{{ item.id }}"
+                    class="hover:bg-surface transition duration-150"
+                >
+
+                    <!-- INGREDIENT -->
+                    <td class="px-6 py-5">
+
+                        <div class="flex items-center gap-4 min-w-[280px]">
+
+                            <div class="w-14 h-14 rounded-xl bg-surface-light border border-gray-700 flex items-center justify-center shrink-0">
+                                <i class="fas fa-box-open text-gray-400 text-lg"></i>
+                            </div>
+
+                            <div>
+
+                                <p class="text-white font-semibold text-base">
+                                    {{ item.ingredient_name }}
+                                </p>
+
+                                <p class="text-gray-500 text-sm mt-1">
+                                    Envanter Ürünü
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </td>
+
+                    <!-- QUANTITY -->
+                    <td class="px-4 py-5 text-center">
+
+                        <span class="
+                            font-bold text-lg whitespace-nowrap
+                            {{ 'text-red-400' if item.quantity <= item.min_stock else 'text-white' }}
+                        ">
+                            {{ item.quantity }}
+                        </span>
+
+                    </td>
+
+                    <!-- UNIT -->
+                    <td class="px-4 py-5 text-center">
+
+                        <span class="inline-flex items-center px-3 py-1 rounded-lg bg-surface-light text-gray-300 text-sm">
+                            {{ item.unit }}
+                        </span>
+
+                    </td>
+
+                    <!-- MIN STOCK -->
+                    <td class="px-4 py-5 text-center">
+
+                        <span class="text-gray-300 font-medium">
+                            {{ item.min_stock }}
+                        </span>
+
+                    </td>
+
+                    <!-- STATUS -->
+                    <td class="px-4 py-5 text-center">
+
+                        {% if item.quantity <= item.min_stock %}
+
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/15 text-red-400 text-sm font-medium">
+                            <span class="w-2 h-2 rounded-full bg-red-400"></span>
+                            Kritik
+                        </span>
+
+                        {% elif item.quantity <= item.min_stock * 1.5 %}
+
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/15 text-yellow-400 text-sm font-medium">
+                            <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+                            Düşük
+                        </span>
+
+                        {% else %}
+
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/15 text-green-400 text-sm font-medium">
+                            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                            Yeterli
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- SUPPLIER -->
+                    <td class="px-4 py-5">
+
+                        <div class="text-gray-300">
+                            {{ item.supplier or '-' }}
+                        </div>
+
+                    </td>
+
+                    <!-- ACTIONS -->
+                    <td class="px-6 py-5">
+
+                        <div class="flex items-center justify-center gap-2">
+
+                            <button
+                                onclick="editStock('{{ item.id }}')"
+                                class="w-10 h-10 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition flex items-center justify-center"
+                                title="Düzenle"
+                            >
+                                <i class="fas fa-edit"></i>
+                            </button>
+
+                            <button
+                                onclick="addStock('{{ item.id }}')"
+                                class="w-10 h-10 rounded-xl bg-green-500/10 hover:bg-green-500/20 text-green-400 transition flex items-center justify-center"
+                                title="Stok Ekle"
+                            >
+                                <i class="fas fa-plus"></i>
+                            </button>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+                {% if not items %}
+
+                <tr>
+
+                    <td colspan="7" class="py-16 text-center">
+
+                        <div class="flex flex-col items-center">
+
+                            <div class="w-20 h-20 rounded-2xl bg-surface-light border border-gray-700 flex items-center justify-center mb-4">
+                                <i class="fas fa-box-open text-3xl text-gray-500"></i>
+                            </div>
+
+                            <h3 class="text-lg font-semibold text-white mb-2">
+                                Stok bulunamadı
+                            </h3>
+
+                            <p class="text-gray-400">
+                                Henüz envantere ürün eklenmemiş.
+                            </p>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="stock-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-white" id="modal-title">Stok Ekle</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <form onsubmit="saveStock(event)" class="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+            <input type="hidden" name="item_id" id="item-id">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Malzeme Adı</label>
+                <input type="text" name="ingredient_name" id="ingredient-name" required class="input-field" placeholder="Örn: Domates">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Miktar</label>
+                    <input type="number" name="quantity" id="quantity" step="0.01" required class="input-field" placeholder="0.00">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Birim</label>
+                    <select name="unit" id="unit" class="input-field">
+                        <option value="kg">Kilogram (kg)</option>
+                        <option value="lt">Litre (lt)</option>
+                        <option value="adet">Adet</option>
+                        <option value="gr">Gram (gr)</option>
+                        <option value="paket">Paket</option>
+                        <option value="koli">Koli</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Kritik Seviye</label>
+                <input type="number" name="min_stock" id="min-stock" step="0.01" required class="input-field" placeholder="Minimum stok miktarı">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">Tedarikçi</label>
+                <input type="text" name="supplier" id="supplier" class="input-field" placeholder="Tedarikçi adı">
+            </div>
+            <button type="submit" class="w-full btn-primary py-3">
+                <i class="fas fa-save mr-2"></i>Kaydet
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let editingId = null;
+
+function showAddModal() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Yeni Stok Ekle';
+    document.getElementById('item-id').value = '';
+    document.getElementById('ingredient-name').value = '';
+    document.getElementById('quantity').value = '';
+    document.getElementById('min-stock').value = '';
+    document.getElementById('supplier').value = '';
+    document.getElementById('stock-modal').classList.remove('hidden');
+}
+
+function editStock(itemId) {
+    editingId = itemId;
+    document.getElementById('modal-title').textContent = 'Stok Güncelle';
+
+    // API'den veri çek
+    fetch('/inventory/api/list')
+        .then(response => response.json())
+        .then(data => {
+            const item = data.find(i => i.id == itemId);
+            if (item) {
+                document.getElementById('item-id').value = item.id;
+                document.getElementById('ingredient-name').value = item.ingredient_name;
+                document.getElementById('quantity').value = item.quantity;
+                document.getElementById('unit').value = item.unit;
+                document.getElementById('min-stock').value = item.min_stock;
+                document.getElementById('supplier').value = item.supplier || '';
+                document.getElementById('stock-modal').classList.remove('hidden');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Veri yüklenirken hata oluştu!', 'error');
+        });
+}
+
+function addStock(itemId) {
+    const amount = prompt('Eklenecek miktarı girin:');
+    if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
+        const formData = new FormData();
+        formData.append('quantity', parseFloat(amount));
+
+        fetch('/inventory/api/update/' + itemId, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Stok güncellendi!', 'success');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                showToast(data.message || 'Güncelleme başarısız', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('İşlem başarısız!', 'error');
+        });
+    } else if (amount !== null) {
+        showToast('Geçerli bir miktar girin!', 'warning');
+    }
+}
+
+function closeModal() {
+    document.getElementById('stock-modal').classList.add('hidden');
+}
+
+function saveStock(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+
+    const url = editingId ? '/inventory/api/update/' + editingId : '/inventory/api/create';
+
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('HTTP error! status: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showToast(editingId ? 'Stok güncellendi!' : 'Stok eklendi!', 'success');
+            closeModal();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(data.message || 'Bir hata oluştu', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Kaydetme başarısız!', 'error');
+    });
+}
+
+// Modal dışına tıklama ile kapatma
+document.getElementById('stock-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        closeModal();
+    }
+});
+</script>
+
+<script>
+
+/* PAYMENT SEARCH */
+
+document.getElementById('payment-search')?.addEventListener('input', function () {
+
+    const query = this.value.toLowerCase();
+
+    document.querySelectorAll('#payments-table tr').forEach(row => {
+
+        const text = row.innerText.toLowerCase();
+
+        row.style.display = text.includes(query)
+            ? ''
+            : 'none';
+
+    });
+
+});
+
+</script>
+
+<script>
+
+/* STOCK SEARCH */
+
+document.getElementById('stock-search')?.addEventListener('input', function () {
+
+    const query = this.value.toLowerCase();
+
+    document.querySelectorAll('#stock-table tr').forEach(row => {
+
+        const text = row.innerText.toLowerCase();
+
+        row.style.display = text.includes(query)
+            ? ''
+            : 'none';
+
+    });
+
+});
+
+</script>
+
+{% endblock %}

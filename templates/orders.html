@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}Siparişler - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Siparişler</h1>
+            <p class="text-gray-400 mt-1">
+                Aktif siparişler ve yeni sipariş alma
+            </p>
+        </div>
+
+        <a href="/tables" class="btn-primary">
+            <i class="fas fa-plus mr-2"></i>
+            Yeni Sipariş
+        </a>
+    </div>
+
+    <!-- Active Orders -->
+    <div class="bg-secondary rounded-xl border border-gray-700">
+
+        <div class="p-6 border-b border-gray-700">
+            <h2 class="text-lg font-semibold text-white">
+                Aktif Siparişler
+            </h2>
+        </div>
+
+        <div class="p-6">
+
+            {% if active_orders %}
+
+            <div class="overflow-x-auto">
+                <table class="responsive-table w-full">
+                    <thead>
+                        <tr class="text-left border-b border-gray-700">
+                            <th class="py-3 px-4">Sipariş No</th>
+                            <th class="py-3 px-4">Masa</th>
+                            <th class="py-3 px-4">Durum</th>
+                            <th class="py-3 px-4">Tutar</th>
+                            <th class="py-3 px-4">Saat</th>
+                            <th class="py-3 px-4">İşlemler</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        {% for order in active_orders %}
+
+                        <tr class="border-b border-gray-700 hover:bg-surface-light transition">
+
+                            <td class="px-4 py-3 font-medium text-white">
+                                #{{ order.id }}
+                            </td>
+
+                            <td class="px-4 py-3 text-white">
+                                {{ order.table.table_number if order.table else "-" }}
+                            </td>
+
+                            <td class="px-4 py-3">
+
+                                {% set status = order.status.value %}
+
+                                {% if status == "pending" %}
+                                    <span class="badge bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded">
+                                        Beklemede
+                                    </span>
+
+                                {% elif status == "preparing" %}
+                                    <span class="badge bg-orange-500/20 text-orange-400 px-2 py-1 rounded">
+                                        Hazırlanıyor
+                                    </span>
+
+                                {% elif status == "ready" %}
+                                    <span class="badge bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                                        Hazır
+                                    </span>
+
+                                {% elif status == "served" %}
+                                    <span class="badge bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                                        Servis Edildi
+                                    </span>
+
+                                {% elif status == "cancelled" %}
+                                    <span class="badge bg-red-500/20 text-red-400 px-2 py-1 rounded">
+                                        İptal
+                                    </span>
+
+                                {% else %}
+                                    <span class="badge bg-gray-500/20 text-gray-400 px-2 py-1 rounded">
+                                        {{ status }}
+                                    </span>
+                                {% endif %}
+
+                            </td>
+
+                            <td class="px-4 py-3 font-semibold text-white">
+                                {{ "%.0f"|format(order.final_amount) }} ₺
+                            </td>
+
+                            <td class="px-4 py-3 text-gray-400">
+                                {{ order.created_at.strftime('%H:%M') if order.created_at else '-' }}
+                            </td>
+
+                            <td class="px-4 py-3 flex gap-2">
+
+                                <button
+                                    onclick="viewOrder({{ order.id }})"
+                                    class="btn-secondary btn-sm"
+                                >
+                                    <i class="fas fa-eye"></i>
+                                </button>
+
+                                <a
+                                    href="/payments/order/{{ order.id }}"
+                                    class="btn-primary btn-sm"
+                                >
+                                    <i class="fas fa-cash-register"></i>
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+                </table>
+            </div>
+
+            {% else %}
+
+            <div class="text-center py-12 text-gray-500">
+                <i class="fas fa-clipboard-list text-5xl mb-4"></i>
+
+                <p>Aktif sipariş bulunmuyor</p>
+
+                <a href="/tables"
+                   class="inline-block mt-4 text-primary hover:underline">
+                    Yeni sipariş al
+                </a>
+            </div>
+
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="order-modal"
+     class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50">
+
+    <div class="bg-secondary w-full max-w-2xl rounded-xl border border-gray-700 p-6 relative">
+
+        <button
+            onclick="closeOrderModal()"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white"
+        >
+            <i class="fas fa-times text-xl"></i>
+        </button>
+
+        <div id="modal-content"></div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+
+function getStatusLabel(status) {
+
+    switch(status) {
+        case "pending":
+            return "Beklemede";
+
+        case "preparing":
+            return "Hazırlanıyor";
+
+        case "ready":
+            return "Hazır";
+
+        case "served":
+            return "Servis Edildi";
+
+        case "cancelled":
+            return "İptal";
+
+        default:
+            return status;
+    }
+}
+
+function getStatusColor(status) {
+
+    switch(status) {
+        case "pending":
+            return "bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded";
+
+        case "preparing":
+            return "bg-orange-500/20 text-orange-400 px-2 py-1 rounded";
+
+        case "ready":
+            return "bg-green-500/20 text-green-400 px-2 py-1 rounded";
+
+        case "served":
+            return "bg-blue-500/20 text-blue-400 px-2 py-1 rounded";
+
+        case "cancelled":
+            return "bg-red-500/20 text-red-400 px-2 py-1 rounded";
+
+        default:
+            return "bg-gray-500/20 text-gray-400 px-2 py-1 rounded";
+    }
+}
+
+function viewOrder(orderId) {
+
+    fetch(`/orders/api/${orderId}`)
+        .then(response => response.json())
+        .then(data => {
+
+            document.getElementById("modal-content").innerHTML = `
+
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    Sipariş #${data.id}
+                </h2>
+
+                <div class="space-y-4">
+
+                    <div class="flex justify-between items-center p-4 bg-surface rounded-lg">
+
+                        <div>
+                            <p class="text-gray-400 text-sm">Masa</p>
+                            <p class="text-white font-semibold text-lg">
+                                ${data.table_number}
+                            </p>
+                        </div>
+
+                        <div class="text-right">
+                            <p class="text-gray-400 text-sm">Durum</p>
+
+                            <span class="${getStatusColor(data.status)}">
+                                ${getStatusLabel(data.status)}
+                            </span>
+                        </div>
+
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-4">
+
+                        <h4 class="text-white font-medium mb-3">
+                            Sipariş Detayları
+                        </h4>
+
+                        <div class="space-y-2">
+
+                            ${data.items.map(item => `
+
+                                <div class="flex justify-between items-center p-3 bg-surface rounded-lg">
+
+                                    <div>
+                                        <p class="text-white">
+                                            ${item.product_name}
+                                        </p>
+
+                                        <p class="text-gray-400 text-sm">
+                                            ${item.quantity} adet x ${item.unit_price} ₺
+                                        </p>
+                                    </div>
+
+                                    <p class="text-white font-semibold">
+                                        ${item.total_price} ₺
+                                    </p>
+
+                                </div>
+
+                            `).join('')}
+
+                        </div>
+
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-4 flex justify-between items-center text-lg">
+
+                        <span class="text-gray-400">Toplam</span>
+
+                        <span class="text-white font-bold text-xl">
+                            ${data.final_amount} ₺
+                        </span>
+
+                    </div>
+
+                </div>
+            `;
+
+            document.getElementById("order-modal")
+                .classList.remove("hidden");
+
+            document.getElementById("order-modal")
+                .classList.add("flex");
+        });
+}
+
+function closeOrderModal() {
+
+    document.getElementById("order-modal")
+        .classList.add("hidden");
+
+    document.getElementById("order-modal")
+        .classList.remove("flex");
+}
+
+</script>
+{% endblock %}
+```

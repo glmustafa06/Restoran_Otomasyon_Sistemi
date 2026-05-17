@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}Raporlar - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+    <!-- HEADER -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-white">
+            <i class="fas fa-chart-bar text-blue-400 mr-2"></i>
+            Raporlar ve Analizler
+        </h1>
+
+        <p class="text-gray-400 mt-1">
+            Detaylı satış ve performans raporları
+        </p>
+    </div>
+
+    <!-- PERIOD SELECTOR -->
+    <div class="bg-secondary rounded-2xl border border-gray-700 p-4 mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+
+        <div class="flex flex-wrap gap-3">
+
+            <button
+                onclick="loadReport('today')"
+                class="period-btn active px-4 py-2 rounded-xl bg-primary text-white transition"
+                data-period="today"
+            >
+                Bugün
+            </button>
+
+            <button
+                onclick="loadReport('week')"
+                class="period-btn px-4 py-2 rounded-xl bg-surface text-gray-300 hover:bg-surface-light transition"
+                data-period="week"
+            >
+                Bu Hafta
+            </button>
+
+            <button
+                onclick="loadReport('month')"
+                class="period-btn px-4 py-2 rounded-xl bg-surface text-gray-300 hover:bg-surface-light transition"
+                data-period="month"
+            >
+                Bu Ay
+            </button>
+
+        </div>
+
+        <button
+            onclick="endOfDay()"
+            class="px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition flex items-center justify-center gap-2 font-medium"
+        >
+            <i class="fas fa-lock"></i>
+            <span>Gün Sonu Al</span>
+        </button>
+
+    </div>
+
+    <!-- STATS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+        <div class="bg-secondary rounded-2xl border border-gray-700 p-6">
+
+            <div class="flex items-center justify-between">
+
+                <div>
+                    <p class="text-gray-400 text-sm">
+                        Toplam Sipariş
+                    </p>
+
+                    <p class="text-3xl font-bold text-white mt-1" id="stat-orders">
+                        -
+                    </p>
+                </div>
+
+                <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-shopping-cart text-blue-400 text-xl"></i>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="bg-secondary rounded-2xl border border-gray-700 p-6">
+
+            <div class="flex items-center justify-between">
+
+                <div>
+                    <p class="text-gray-400 text-sm">
+                        Toplam Ciro
+                    </p>
+
+                    <p class="text-3xl font-bold text-white mt-1" id="stat-revenue">
+                        -
+                    </p>
+                </div>
+
+                <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-lira-sign text-green-400 text-xl"></i>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="bg-secondary rounded-2xl border border-gray-700 p-6">
+
+            <div class="flex items-center justify-between">
+
+                <div>
+                    <p class="text-gray-400 text-sm">
+                        Ortalama Sipariş
+                    </p>
+
+                    <p class="text-3xl font-bold text-white mt-1" id="stat-avg">
+                        -
+                    </p>
+                </div>
+
+                <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-chart-line text-purple-400 text-xl"></i>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- POPULAR PRODUCTS -->
+    <div class="bg-secondary rounded-2xl border border-gray-700 overflow-hidden">
+
+        <div class="p-6 border-b border-gray-700">
+
+            <h2 class="text-lg font-semibold text-white">
+                En Çok Satan Ürünler
+            </h2>
+
+        </div>
+
+        <div class="p-6">
+
+            <div id="popular-products" class="space-y-3">
+
+                <div class="text-center text-gray-500 py-10">
+
+                    <i class="fas fa-spinner fa-spin text-3xl mb-3"></i>
+
+                    <p>Yükleniyor...</p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+
+let currentReportData = null;
+let currentPopularProducts = [];
+let currentPeriod = 'today';
+
+/* LOAD REPORT */
+
+function loadReport(period) {
+
+    currentPeriod = period;
+
+    /* BUTTON STATES */
+
+    document.querySelectorAll('.period-btn').forEach(btn => {
+
+        btn.classList.remove(
+            'active',
+            'bg-primary',
+            'text-white'
+        );
+
+        btn.classList.add(
+            'bg-surface',
+            'text-gray-300'
+        );
+
+        if (btn.dataset.period === period) {
+
+            btn.classList.add(
+                'active',
+                'bg-primary',
+                'text-white'
+            );
+
+            btn.classList.remove(
+                'bg-surface',
+                'text-gray-300'
+            );
+
+        }
+
+    });
+
+    /* SALES REPORT */
+
+    fetch(`/reports/api/sales?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+
+            currentReportData = data;
+
+            document.getElementById('stat-orders').textContent =
+                data.total_orders || 0;
+
+            document.getElementById('stat-revenue').textContent =
+                (data.total_revenue || 0).toFixed(0) + ' ₺';
+
+            document.getElementById('stat-avg').textContent =
+                (data.avg_order_value || 0).toFixed(0) + ' ₺';
+
+        })
+        .catch(error => {
+
+            console.error(error);
+
+            showToast('Rapor verileri alınamadı!', 'error');
+
+        });
+
+    /* POPULAR PRODUCTS */
+
+    fetch('/reports/api/popular-products?limit=10')
+        .then(response => response.json())
+        .then(data => {
+
+            currentPopularProducts = data;
+
+            const container =
+                document.getElementById('popular-products');
+
+            if (!data || data.length === 0) {
+
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-10">
+                        <i class="fas fa-inbox text-5xl mb-3"></i>
+                        <p>Henüz veri yok</p>
+                    </div>
+                `;
+
+                return;
+
+            }
+
+            const maxSold =
+                Math.max(...data.map(d => d.total_sold));
+
+            container.innerHTML = data.map((product, index) => `
+
+                <div class="flex items-center gap-4 p-4 bg-surface rounded-xl border border-gray-700">
+
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold
+                        ${index === 0
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : index === 1
+                            ? 'bg-gray-400/20 text-gray-300'
+                            : index === 2
+                            ? 'bg-orange-500/20 text-orange-400'
+                            : 'bg-surface-light text-gray-500'}">
+
+                        ${index + 1}
+
+                    </div>
+
+                    <div class="flex-1">
+
+                        <p class="text-white font-medium">
+                            ${product.name}
+                        </p>
+
+                        <div class="w-full bg-surface-light rounded-full h-2 mt-2 overflow-hidden">
+
+                            <div
+                                class="bg-primary h-2 rounded-full transition-all duration-500"
+                                style="width:${(product.total_sold / maxSold * 100).toFixed(0)}%"
+                            ></div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="text-right shrink-0">
+
+                        <p class="text-primary font-semibold text-lg">
+                            ${product.total_sold}
+                        </p>
+
+                        <p class="text-gray-500 text-xs">
+                            adet
+                        </p>
+
+                    </div>
+
+                </div>
+
+            `).join('');
+
+        })
+        .catch(error => {
+
+            console.error(error);
+
+            showToast('Popüler ürünler yüklenemedi!', 'error');
+
+        });
+
+}
+
+/* END OF DAY */
+
+function endOfDay() {
+
+    if (!currentReportData) {
+
+        showToast('Rapor verileri henüz yüklenmedi!', 'warning');
+
+        return;
+
+    }
+
+    const now = new Date();
+
+    const date =
+        now.toLocaleDateString('tr-TR');
+
+    const time =
+        now.toLocaleTimeString('tr-TR');
+
+    const reportText = `
+
+==================================================
+                GÜN SONU RAPORU
+==================================================
+
+Tarih : ${date}
+Saat  : ${time}
+Periyot : ${
+    currentPeriod === 'today'
+        ? 'Bugün'
+        : currentPeriod === 'week'
+        ? 'Bu Hafta'
+        : 'Bu Ay'
+}
+
+==================================================
+                    GENEL DURUM
+==================================================
+
+Toplam Sipariş : ${currentReportData.total_orders || 0}
+
+Toplam Ciro    : ${(currentReportData.total_revenue || 0).toFixed(2)} ₺
+
+Ortalama Sipariş :
+${(currentReportData.avg_order_value || 0).toFixed(2)} ₺
+
+==================================================
+             EN ÇOK SATAN ÜRÜNLER
+==================================================
+
+${currentPopularProducts.length > 0
+    ? currentPopularProducts.map((product, index) => `
+${index + 1}. ${product.name}
+   Satış Adedi : ${product.total_sold}
+`).join('\n')
+    : 'Ürün verisi bulunamadı.'
+}
+
+==================================================
+          RAPOR OTOMATİK OLUŞTURULMUŞTUR
+==================================================
+
+${date} ${time}
+
+`;
+
+    const blob = new Blob(
+        [reportText],
+        { type: 'text/plain;charset=utf-8' }
+    );
+
+    const link = document.createElement('a');
+
+    const fileName =
+        `gun-sonu-${date.replace(/\./g, '-')}.txt`;
+
+    link.href = URL.createObjectURL(blob);
+
+    link.download = fileName;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(link.href);
+
+    showToast('Gün sonu raporu indirildi!', 'success');
+
+}
+
+/* INITIAL LOAD */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    loadReport('today');
+
+});
+
+</script>
+{% endblock %}
+```

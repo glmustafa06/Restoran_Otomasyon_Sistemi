@@ -1,0 +1,674 @@
+{% extends "base.html" %}
+
+{% block title %}Menü Yönetimi - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+
+    <!-- HEADER -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">
+                Menü Yönetimi
+            </h1>
+
+            <p class="text-gray-400 mt-1">
+                Kategorileri ve ürünleri yönetin
+            </p>
+        </div>
+
+        <div class="flex space-x-3">
+            <button onclick="showCategoryModal()" class="btn-secondary">
+                <i class="fas fa-folder-plus mr-2"></i>
+                Kategori Ekle
+            </button>
+
+            <button onclick="showProductModal()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i>
+                Ürün Ekle
+            </button>
+        </div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div class="mb-8">
+
+        <h2 class="text-xl font-semibold text-white mb-4">
+            Kategoriler
+        </h2>
+
+        <div class="flex flex-wrap gap-3">
+
+            {% for category in categories %}
+            <div class="bg-secondary rounded-lg border border-gray-700 px-4 py-3 flex items-center space-x-3">
+
+                <span class="text-white font-medium">
+                    {{ category.name }}
+                </span>
+
+                <span class="text-gray-500 text-sm">
+                    ({{ category.products|length }} ürün)
+                </span>
+
+            </div>
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <!-- PRODUCTS TABLE -->
+    <div class="bg-secondary rounded-2xl border border-gray-700 overflow-hidden shadow-lg">
+
+        <!-- TOP -->
+        <div class="p-6 border-b border-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+            <div>
+                <h2 class="text-xl font-semibold text-white">
+                    Ürün Listesi
+                </h2>
+
+                <p class="text-sm text-gray-400 mt-1">
+                    Menüdeki tüm ürünleri yönetin
+                </p>
+            </div>
+
+            <div class="relative">
+
+                <input
+                    type="text"
+                    id="product-search"
+                    placeholder="Ürün ara..."
+                    class="w-72 pl-10 pr-4 py-2.5 bg-surface rounded-xl text-white placeholder-gray-500 border border-gray-600 focus:border-primary focus:outline-none"
+                >
+
+                <i class="fas fa-search absolute left-3 top-3 text-gray-500"></i>
+
+            </div>
+
+        </div>
+
+        <!-- TABLE -->
+        <div class="overflow-x-auto">
+
+            <table class="w-full min-w-[1100px]">
+
+                <thead class="bg-surface border-b border-gray-700">
+
+                    <tr>
+
+                        <th class="text-left px-6 py-4 text-sm font-semibold text-gray-300 uppercase">
+                            Ürün
+                        </th>
+
+                        <th class="text-left px-4 py-4 text-sm font-semibold text-gray-300 uppercase">
+                            Kategori
+                        </th>
+
+                        <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase">
+                            Satış
+                        </th>
+
+                        <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase">
+                            Maliyet
+                        </th>
+
+                        <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase">
+                            Hazırlama
+                        </th>
+
+                        <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase">
+                            Durum
+                        </th>
+
+                        <th class="text-center px-6 py-4 text-sm font-semibold text-gray-300 uppercase">
+                            İşlemler
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="products-table" class="divide-y divide-gray-700">
+
+                    {% for product in products %}
+
+                    <tr
+                        class="hover:bg-surface transition"
+                        data-product-id="{{ product.id }}"
+                        data-active="{{ '1' if product.is_active else '0' }}"
+                        data-name="{{ product.name }}"
+                        data-description="{{ product.description or '' }}"
+                        data-price="{{ product.price }}"
+                        data-cost="{{ product.cost }}"
+                        data-prep="{{ product.prep_time }}"
+                        data-category="{{ product.category_id }}"
+                    >
+
+                        <!-- PRODUCT -->
+                        <td class="px-6 py-5">
+
+                            <div class="flex items-start gap-4">
+
+                                <div class="w-14 h-14 rounded-xl bg-surface-light border border-gray-700 flex items-center justify-center shrink-0">
+                                    <i class="fas fa-utensils text-gray-400"></i>
+                                </div>
+
+                                <div class="min-w-0">
+
+                                    <p class="text-white font-semibold text-base truncate">
+                                        {{ product.name }}
+                                    </p>
+
+                                    <p class="text-gray-400 text-sm mt-1 max-w-md line-clamp-2">
+                                        {{ product.description or 'Açıklama bulunmuyor.' }}
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </td>
+
+                        <!-- CATEGORY -->
+                        <td class="px-4 py-5">
+
+                            <span class="inline-flex items-center px-3 py-1 rounded-lg bg-surface-light text-gray-300 text-sm">
+                                {{ product.category.name if product.category else '-' }}
+                            </span>
+
+                        </td>
+
+                        <!-- PRICE -->
+                        <td class="px-4 py-5 text-center">
+
+                            <span class="text-primary font-bold text-lg">
+                                {{ "%.0f"|format(product.price) }} ₺
+                            </span>
+
+                        </td>
+
+                        <!-- COST -->
+                        <td class="px-4 py-5 text-center">
+
+                            <span class="text-gray-300 font-medium">
+                                {{ "%.0f"|format(product.cost) }} ₺
+                            </span>
+
+                        </td>
+
+                        <!-- PREP -->
+                        <td class="px-4 py-5 text-center">
+
+                            <div class="inline-flex items-center gap-2 text-gray-300">
+                                <i class="fas fa-clock text-gray-500"></i>
+                                {{ product.prep_time }} dk
+                            </div>
+
+                        </td>
+
+                        <!-- STATUS -->
+                        <td class="px-4 py-5 text-center">
+
+                            {% if product.is_active %}
+
+                            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/15 text-green-400 text-sm">
+                                <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                                Aktif
+                            </span>
+
+                            {% else %}
+
+                            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gray-500/15 text-gray-400 text-sm">
+                                <span class="w-2 h-2 rounded-full bg-gray-400"></span>
+                                Pasif
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <!-- ACTIONS -->
+                        <td class="px-6 py-5">
+
+                            <div class="flex justify-center gap-2">
+
+                                <button
+                                    onclick="editProduct({{ product.id }})"
+                                    class="w-10 h-10 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition flex items-center justify-center"
+                                >
+                                    <i class="fas fa-edit"></i>
+                                </button>
+
+                                <button
+                                    onclick="toggleProductStatus({{ product.id }})"
+                                    class="w-10 h-10 rounded-xl flex items-center justify-center transition
+                                    {{ 'bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400' if product.is_active else 'bg-green-500/10 hover:bg-green-500/20 text-green-400' }}"
+                                >
+                                    <i class="fas {{ 'fa-eye-slash' if product.is_active else 'fa-eye' }}"></i>
+                                </button>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- PRODUCT MODAL -->
+<div id="product-modal" class="modal-overlay hidden">
+
+    <div class="modal-content max-w-lg">
+
+        <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+
+            <h3 id="modal-title" class="text-lg font-semibold text-white">
+                Yeni Ürün
+            </h3>
+
+            <button onclick="closeProductModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+        </div>
+
+        <form id="product-form" class="p-6 space-y-5">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Ürün Adı
+                </label>
+
+                <input
+                    type="text"
+                    id="product-name"
+                    class="input-field"
+                    required
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Kategori
+                </label>
+
+                <select id="product-category" class="input-field">
+
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">
+                        {{ category.name }}
+                    </option>
+                    {% endfor %}
+
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        Fiyat
+                    </label>
+
+                    <input
+                        type="number"
+                        id="product-price"
+                        class="input-field"
+                        step="0.01"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        Maliyet
+                    </label>
+
+                    <input
+                        type="number"
+                        id="product-cost"
+                        class="input-field"
+                        step="0.01"
+                        value="0"
+                    >
+                </div>
+
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Hazırlama Süresi
+                </label>
+
+                <input
+                    type="number"
+                    id="product-prep"
+                    class="input-field"
+                    value="15"
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Açıklama
+                </label>
+
+                <textarea
+                    id="product-description"
+                    rows="3"
+                    class="input-field resize-none"
+                ></textarea>
+            </div>
+
+            <button
+                type="submit"
+                class="w-full btn-primary py-3"
+            >
+                Kaydet
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- CATEGORY MODAL -->
+<div id="category-modal" class="modal-overlay hidden">
+
+    <div class="modal-content">
+
+        <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+
+            <h3 class="text-lg font-semibold text-white">
+                Yeni Kategori Ekle
+            </h3>
+
+            <button onclick="closeCategoryModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+        </div>
+
+        <form id="category-form" class="p-6 space-y-5">
+
+            <div>
+
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Kategori Adı
+                </label>
+
+                <input
+                    type="text"
+                    name="name"
+                    required
+                    class="input-field"
+                    placeholder="Örn: Tatlılar"
+                >
+
+            </div>
+
+            <div>
+
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    Sıralama
+                </label>
+
+                <input
+                    type="number"
+                    name="sort_order"
+                    value="0"
+                    class="input-field"
+                >
+
+            </div>
+
+            <button
+                type="submit"
+                class="w-full btn-primary py-3"
+            >
+                <i class="fas fa-save mr-2"></i>
+                Kaydet
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+
+let editingProductId = null;
+
+/* SEARCH */
+
+document.getElementById('product-search').addEventListener('input', function () {
+
+    const query = this.value.toLowerCase();
+
+    document.querySelectorAll('#products-table tr').forEach(row => {
+
+        const text = row.innerText.toLowerCase();
+
+        row.style.display = text.includes(query)
+            ? ''
+            : 'none';
+
+    });
+
+});
+
+/* PRODUCT MODAL */
+
+function showProductModal() {
+
+    editingProductId = null;
+
+    document.getElementById('modal-title').innerText = 'Yeni Ürün';
+
+    document.getElementById('product-form').reset();
+
+    document.getElementById('product-modal').classList.remove('hidden');
+
+}
+
+function closeProductModal() {
+
+    document.getElementById('product-modal').classList.add('hidden');
+
+}
+
+/* EDIT PRODUCT */
+
+function editProduct(productId) {
+
+    editingProductId = productId;
+
+    const row = document.querySelector(`tr[data-product-id='${productId}']`);
+
+    document.getElementById('modal-title').innerText = 'Ürün Düzenle';
+
+    document.getElementById('product-name').value = row.dataset.name;
+    document.getElementById('product-description').value = row.dataset.description;
+    document.getElementById('product-price').value = row.dataset.price;
+    document.getElementById('product-cost').value = row.dataset.cost;
+    document.getElementById('product-prep').value = row.dataset.prep;
+    document.getElementById('product-category').value = row.dataset.category;
+
+    document.getElementById('product-modal').classList.remove('hidden');
+
+}
+
+/* SAVE PRODUCT */
+
+document.getElementById('product-form').addEventListener('submit', function(e) {
+
+    e.preventDefault();
+
+    const formData = new FormData();
+
+    formData.append('name', document.getElementById('product-name').value);
+    formData.append('description', document.getElementById('product-description').value);
+    formData.append('price', document.getElementById('product-price').value);
+    formData.append('cost', document.getElementById('product-cost').value);
+    formData.append('prep_time', document.getElementById('product-prep').value);
+    formData.append('category_id', document.getElementById('product-category').value);
+
+    const url = editingProductId
+        ? `/menu/api/products/update/${editingProductId}`
+        : '/menu/api/products/create';
+
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+
+        if (data.success) {
+
+            showToast(
+                editingProductId
+                    ? 'Ürün güncellendi!'
+                    : 'Ürün oluşturuldu!',
+                'success'
+            );
+
+            closeProductModal();
+
+            setTimeout(() => location.reload(), 700);
+
+        } else {
+
+            showToast('İşlem başarısız', 'error');
+
+        }
+
+    })
+    .catch(() => {
+
+        showToast('Sunucu hatası', 'error');
+
+    });
+
+});
+
+/* ACTIVE / PASSIVE */
+
+function toggleProductStatus(productId) {
+
+    const row = document.querySelector(`tr[data-product-id='${productId}']`);
+
+    const currentActive = row.dataset.active === '1';
+
+    const formData = new FormData();
+
+    formData.append('is_active', currentActive ? 'false' : 'true');
+
+    fetch(`/menu/api/products/update/${productId}`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+
+        if (data.success) {
+
+            showToast('Durum güncellendi!', 'success');
+
+            setTimeout(() => location.reload(), 500);
+
+        }
+
+    });
+
+}
+
+/* CATEGORY MODAL */
+
+function showCategoryModal() {
+
+    document.getElementById('category-modal').classList.remove('hidden');
+
+}
+
+function closeCategoryModal() {
+
+    document.getElementById('category-modal').classList.add('hidden');
+
+}
+
+/* CREATE CATEGORY */
+
+document.getElementById('category-form').addEventListener('submit', function(event) {
+
+    event.preventDefault();
+
+    const formData = new FormData(this);
+
+    fetch('/menu/api/categories/create', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        if (data.success) {
+
+            showToast('Kategori oluşturuldu!', 'success');
+
+            closeCategoryModal();
+
+            setTimeout(() => {
+                location.reload();
+            }, 700);
+
+        } else {
+
+            showToast('Kategori oluşturulamadı', 'error');
+
+        }
+
+    })
+    .catch(() => {
+
+        showToast('Sunucu hatası', 'error');
+
+    });
+
+});
+
+/* OUTSIDE CLICK */
+
+document.getElementById('product-modal').addEventListener('click', function(e) {
+
+    if (e.target === this) {
+        closeProductModal();
+    }
+
+});
+
+document.getElementById('category-modal').addEventListener('click', function(e) {
+
+    if (e.target === this) {
+        closeCategoryModal();
+    }
+
+});
+
+</script>
+{% endblock %}

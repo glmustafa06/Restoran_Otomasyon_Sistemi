@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Ödeme Al - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center space-x-4 mb-8">
+        <a href="/payments" class="text-gray-400 hover:text-white transition">
+            <i class="fas fa-arrow-left text-xl"></i>
+        </a>
+        <div>
+            <h1 class="text-2xl font-bold text-white">Ödeme Al</h1>
+            <p class="text-gray-400">Masa {{ order.table.table_number if order.table else '?' }} - Hesap Özeti</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Left: Order Details -->
+        <div class="space-y-6">
+            <!-- Order Items -->
+            <div class="bg-secondary rounded-xl border border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Sipariş Detayları</h3>
+                <div class="space-y-3">
+                    {% for item in order.items %}
+                    <div class="flex justify-between items-center p-3 bg-surface rounded-lg">
+                        <div>
+                            <p class="text-white font-medium">{{ item.product.name if item.product else 'Ürün' }}</p>
+                            <p class="text-gray-400 text-sm">{{ item.quantity }} adet x {{ "%.0f"|format(item.unit_price) }} ₺</p>
+                        </div>
+                        <p class="text-white font-semibold">{{ "%.0f"|format(item.total_price) }} ₺</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="border-t border-gray-700 mt-4 pt-4 space-y-2">
+                    <div class="flex justify-between text-gray-400">
+                        <span>Ara Toplam</span>
+                        <span>{{ "%.0f"|format(order.total_amount) }} ₺</span>
+                    </div>
+                    {% if order.discount_amount > 0 %}
+                    <div class="flex justify-between text-green-400">
+                        <span>İndirim</span>
+                        <span>-{{ "%.0f"|format(order.discount_amount) }} ₺</span>
+                    </div>
+                    {% endif %}
+                    <div class="flex justify-between text-white font-bold text-lg pt-2 border-t border-gray-700">
+                        <span>Toplam</span>
+                        <span class="text-primary text-2xl">{{ "%.0f"|format(order.final_amount) }} ₺</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Payments -->
+            {% if order.payments %}
+            <div class="bg-secondary rounded-xl border border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Önceki Ödemeler</h3>
+                <div class="space-y-2">
+                    {% for payment in order.payments %}
+                    <div class="flex justify-between items-center p-3 bg-surface rounded-lg">
+                        <div>
+                            <p class="text-white">{{ payment.payment_method.value }}</p>
+                            <p class="text-gray-400 text-sm">{{ payment.created_at.strftime('%H:%M') if payment.created_at else '-' }}</p>
+                        </div>
+                        <p class="text-green-400 font-semibold">{{ "%.0f"|format(payment.amount) }} ₺</p>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <div class="flex justify-between text-yellow-400">
+                        <span>Kalan Tutar</span>
+                        <span class="font-bold">{{ "%.0f"|format(order.final_amount - (order.payments|sum(attribute='amount'))) }} ₺</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Payment Form -->
+        <div class="bg-secondary rounded-xl border border-gray-700 p-6">
+            <h3 class="text-lg font-semibold text-white mb-4">Ödeme İşlemi</h3>
+
+            <form onsubmit="processPayment(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Ödeme Yöntemi</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        {% for method in PaymentMethod %}
+                        <label class="cursor-pointer">
+                            <input type="radio" name="payment_method" value="{{ method.value }}" 
+                                   class="hidden peer" {{ 'checked' if loop.first else '' }}>
+                            <div class="p-4 bg-surface rounded-lg border border-gray-700 peer-checked:border-primary peer-checked:bg-primary/10 text-center transition hover:border-gray-600">
+                                <i class="fas 
+                                    {% if method.value == 'cash' %}fa-money-bill
+                                    {% elif method.value == 'credit_card' %}fa-credit-card
+                                    {% elif method.value == 'debit_card' %}fa-university
+                                    {% elif method.value == 'mobile' %}fa-mobile-alt
+                                    {% else %}fa-id-card{% endif %}
+                                    text-2xl mb-2 {{ 'text-primary' if loop.first else 'text-gray-400' }}"></i>
+                                <p class="text-sm text-white font-medium">
+                                    {% if method.value == 'cash' %}Nakit
+                                    {% elif method.value == 'credit_card' %}Kredi Kartı
+                                    {% elif method.value == 'debit_card' %}Banka Kartı
+                                    {% elif method.value == 'mobile' %}Mobil Ödeme
+                                    {% else %}{{ method.value }}{% endif %}
+                                </p>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Ödeme Tutarı (₺)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500 text-lg">₺</span>
+                        <input type="number" name="amount" id="payment-amount" step="0.01" required
+                               value="{{ "%.0f"|format(order.final_amount - (order.payments|sum(attribute='amount'))) }}"
+                               class="input-field pl-10 text-lg font-semibold"
+                               placeholder="0">ยโ
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Bahşiş (₺)</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500">₺</span>
+                        <input type="number" name="tip" step="0.01" value="0"
+                               class="input-field pl-10" placeholder="0">
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl transition text-lg">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Ödemeyi Tamamla
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Radio button styling
+document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.querySelectorAll('input[name="payment_method"]').forEach(r => {
+            const icon = r.nextElementSibling.querySelector('i');
+            if (r.checked) {
+                icon.classList.remove('text-gray-400');
+                icon.classList.add('text-primary');
+            } else {
+                icon.classList.remove('text-primary');
+                icon.classList.add('text-gray-400');
+            }
+        });
+    });
+});
+
+function processPayment(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+
+    fetch('/payments/api/process/{{ order.id }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Ödeme başarılı!', 'success');
+            setTimeout(() => {
+                window.location.href = '/payments';
+            }, 1500);
+        } else {
+            showToast(data.message || 'Bir hata oluştu', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Ödeme işlemi başarısız', 'error');
+    });
+}
+</script>
+{% endblock %}

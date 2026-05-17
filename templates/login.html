@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Giriş - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-surface">
+    <div class="max-w-md w-full mx-4">
+        <!-- Logo & Header -->
+        <div class="text-center mb-8">
+            <div class="w-20 h-20 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/30">
+                <i class="fas fa-utensils text-white text-3xl"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">{{ app_name }}</h1>
+            <p class="text-gray-400">Restoran yönetim sisteminize hoş geldiniz</p>
+        </div>
+
+        <!-- Login Card -->
+        <div class="bg-secondary rounded-2xl shadow-xl border border-gray-700 p-8">
+            <h2 class="text-xl font-semibold text-white mb-6 text-center">Giriş Yap</h2>
+
+            {% if error %}
+            <div class="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-4 flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="/auth/login" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Kullanıcı Adı</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
+                            <i class="fas fa-user"></i>
+                        </span>
+                        <input type="text" name="username" required 
+                               class="w-full pl-10 pr-4 py-3 bg-surface border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition"
+                               placeholder="Kullanıcı adınızı girin">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Şifre</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <input type="password" name="password" required 
+                               class="w-full pl-10 pr-4 py-3 bg-surface border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition"
+                               placeholder="Şifrenizi girin">
+                    </div>
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition duration-200 flex items-center justify-center space-x-2">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Giriş Yap</span>
+                </button>
+            </form>
+
+            <!-- Demo Accounts -->
+            <div class="mt-6 pt-6 border-t border-gray-700">
+                <p class="text-xs text-gray-500 text-center mb-3">Demo Hesapları</p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-surface rounded p-2 text-center text-gray-400">
+                        <span class="text-primary font-medium">admin</span> / admin123
+                    </div>
+                    <div class="bg-surface rounded p-2 text-center text-gray-400">
+                        <span class="text-primary font-medium">garson1</span> / garson123
+                    </div>
+                    <div class="bg-surface rounded p-2 text-center text-gray-400">
+                        <span class="text-primary font-medium">asci1</span> / asci123
+                    </div>
+                    <div class="bg-surface rounded p-2 text-center text-gray-400">
+                        <span class="text-primary font-medium">kasiyer1</span> / kasiyer123
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="text-center text-gray-500 text-sm mt-6">
+            © 2024 Restoran Otomasyon Sistemi
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Masa Yönetimi - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Masa Yönetimi</h1>
+            <p class="text-gray-400 mt-1">Salon düzeni ve masa durumları</p>
+        </div>
+        <div class="flex space-x-3">
+            <div class="flex items-center space-x-2 bg-secondary px-4 py-2 rounded-lg border border-gray-700">
+                <span class="w-3 h-3 rounded-full bg-green-400"></span>
+                <span class="text-sm text-gray-300">Boş: {{ tables|selectattr('status.value', 'equalto', 'empty')|list|length }}</span>
+            </div>
+            <div class="flex items-center space-x-2 bg-secondary px-4 py-2 rounded-lg border border-gray-700">
+                <span class="w-3 h-3 rounded-full bg-red-400"></span>
+                <span class="text-sm text-gray-300">Dolu: {{ tables|selectattr('status.value', 'equalto', 'occupied')|list|length }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sections -->
+    {% for section in sections %}
+    <div class="mb-8">
+        <h2 class="text-xl font-semibold text-white mb-4 flex items-center">
+            <i class="fas fa-map-marker-alt text-primary mr-2"></i>
+            {{ section }}
+        </h2>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for table in tables if table.section == section %}
+            <div class="bg-secondary rounded-xl border border-gray-700 p-6 card-hover cursor-pointer transition-all duration-300
+                {% if table.status.value == 'occupied' %}border-red-500/50 shadow-lg shadow-red-500/10{% endif %}"
+                onclick="showTableDetail({{ table.id }})">
+
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold
+                        {% if table.status.value == 'empty' %}bg-green-500/20 text-green-400
+                        {% elif table.status.value == 'occupied' %}bg-red-500/20 text-red-400
+                        {% elif table.status.value == 'reserved' %}bg-blue-500/20 text-blue-400
+                        {% else %}bg-yellow-500/20 text-yellow-400{% endif %}">
+                        {{ table.table_number }}
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full
+                        {% if table.status.value == 'empty' %}bg-green-500/20 text-green-400
+                        {% elif table.status.value == 'occupied' %}bg-red-500/20 text-red-400
+                        {% elif table.status.value == 'reserved' %}bg-blue-500/20 text-blue-400
+                        {% else %}bg-yellow-500/20 text-yellow-400{% endif %}">
+                        {{ table.status.value }}
+                    </span>
+                </div>
+
+                <div class="text-center">
+                    <p class="text-gray-400 text-sm mb-1">Kapasite</p>
+                    <div class="flex justify-center space-x-1">
+                        {% for i in range(table.capacity) %}
+                        <i class="fas fa-user text-xs text-gray-500"></i>
+                        {% endfor %}
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">{{ table.capacity }} kişilik</p>
+                </div>
+
+                {% if table.status.value == 'empty' %}
+                <a href="/orders/new/{{ table.id }}" 
+                   class="mt-4 block w-full text-center bg-primary hover:bg-primary/90 text-white py-2 rounded-lg transition text-sm"
+                   onclick="event.stopPropagation()">
+                    <i class="fas fa-plus mr-1"></i> Sipariş Al
+                </a>
+                {% else %}
+                <button class="mt-4 block w-full text-center bg-surface hover:bg-surface-light text-gray-300 py-2 rounded-lg transition text-sm"
+                        onclick="event.stopPropagation()">
+                    <i class="fas fa-eye mr-1"></i> Detaylar
+                </button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Table Detail Modal -->
+<div id="table-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+            <h3 class="text-xl font-semibold text-white" id="modal-title">Masa Detayı</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div class="p-6" id="modal-body">
+            <!-- Dynamic content -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function showTableDetail(tableId) {
+    // API'den masa detaylarını al
+    fetch(`/tables/api/detail/${tableId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('modal-title').textContent = `Masa ${data.table_number}`;
+            document.getElementById('modal-body').innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center p-3 bg-surface rounded-lg">
+                        <span class="text-gray-400">Durum</span>
+                        <span class="px-3 py-1 rounded-full text-sm ${getStatusColor(data.status)}">${getStatusLabel(data.status)}</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-surface rounded-lg">
+                        <span class="text-gray-400">Kapasite</span>
+                        <span class="text-white">${data.capacity} kişi</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-surface rounded-lg">
+                        <span class="text-gray-400">Bölüm</span>
+                        <span class="text-white">${data.section}</span>
+                    </div>
+
+                    ${data.status === 'empty' ? `
+                        <a href="/orders/new/${tableId}" class="block w-full text-center bg-primary hover:bg-primary/90 text-white py-3 rounded-lg transition">
+                            <i class="fas fa-plus mr-2"></i>Yeni Sipariş Al
+                        </a>
+                    ` : ''}
+                </div>
+            `;
+            document.getElementById('table-modal').classList.remove('hidden');
+        });
+}
+
+function closeModal() {
+    document.getElementById('table-modal').classList.add('hidden');
+}
+
+// Modal dışına tıklayınca kapat
+document.getElementById('table-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+});
+</script>
+{% endblock %}

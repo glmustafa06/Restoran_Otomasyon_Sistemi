@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Kasa - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white">
+                <i class="fas fa-cash-register text-green-400 mr-2"></i>
+                Kasa
+            </h1>
+            <p class="text-gray-400 mt-1">Ödemeleri alın ve gün sonu yapın</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="bg-secondary px-4 py-4 rounded-lg border border-gray-700 text-center">
+                <p class="text-gray-400 text-sm">Bugünkü Ciro</p>
+                <p class="text-green-400 font-bold text-xl" id="today-revenue">Hesaplanıyor...</p>
+            </div>
+            <div class="bg-secondary px-4 py-4 rounded-lg border border-gray-700 text-center">
+                <p class="text-gray-400 text-sm">Günlük Gider</p>
+                <p class="text-red-400 font-bold text-xl" id="today-cost">Hesaplanıyor...</p>
+            </div>
+            <div class="bg-secondary px-4 py-4 rounded-lg border border-gray-700 text-center">
+                <p class="text-gray-400 text-sm">Net Kar</p>
+                <p class="text-primary font-bold text-xl" id="today-profit">Hesaplanıyor...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unpaid Orders -->
+    <div class="bg-secondary rounded-xl border border-gray-700 mb-8">
+        <div class="p-6 border-b border-gray-700">
+            <h2 class="text-lg font-semibold text-white">Ödenmemiş Hesaplar</h2>
+        </div>
+        <div class="p-6">
+            {% if unpaid_orders %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for order in unpaid_orders %}
+                <div class="bg-surface rounded-xl border border-gray-700 p-5 card-hover">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-white font-semibold text-lg">Masa {{ order.table.table_number if order.table else '?' }}</h3>
+                            <p class="text-gray-400 text-sm">
+                                <i class="fas fa-clock mr-1"></i>
+                                {{ order.created_at.strftime('%H:%M') if order.created_at else '-' }}
+                            </p>
+                        </div>
+                        <span class="badge bg-yellow-500/20 text-yellow-400">
+                            {{ order.payment_status.value }}
+                        </span>
+                    </div>
+
+                    <div class="space-y-2 mb-4">
+                        {% for item in order.items %}
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-300">{{ item.product.name if item.product else 'Ürün' }} x{{ item.quantity }}</span>
+                            <span class="text-gray-400">{{ "%.0f"|format(item.total_price) }} ₺</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-3 mb-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Toplam</span>
+                            <span class="text-white font-bold text-xl">{{ "%.0f"|format(order.final_amount) }} ₺</span>
+                        </div>
+                    </div>
+
+                    <a href="/payments/order/{{ order.id }}" class="block w-full text-center bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition">
+                        <i class="fas fa-credit-card mr-2"></i>Ödeme Al
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-12 text-gray-500">
+                <i class="fas fa-check-circle text-5xl text-green-400 mb-4"></i>
+                <p class="text-lg">Tüm hesaplar ödenmiş!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+<!-- Today's Payments -->
+<div class="bg-secondary rounded-2xl border border-gray-700 overflow-hidden shadow-lg">
+
+    <!-- TOP BAR -->
+    <div class="p-6 border-b border-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+        <div>
+            <h2 class="text-xl font-semibold text-white">
+                Bugünkü Ödemeler
+            </h2>
+
+            <p class="text-sm text-gray-400 mt-1">
+                Gün içerisinde alınan tüm ödemeler
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3">
+
+            <div class="relative">
+                <input
+                    type="text"
+                    id="payment-search"
+                    placeholder="Ödeme ara..."
+                    class="w-64 pl-10 pr-4 py-2.5 bg-surface rounded-xl text-white placeholder-gray-500 border border-gray-600 focus:border-primary focus:outline-none"
+                >
+
+                <i class="fas fa-search absolute left-3 top-3 text-gray-500"></i>
+            </div>
+
+            <div class="px-4 py-2 bg-surface rounded-xl border border-gray-700 text-sm text-gray-300">
+                {{ today_payments|length }} işlem
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TABLE -->
+    <div class="overflow-x-auto">
+
+        <table class="w-full min-w-[950px]">
+
+            <!-- TABLE HEAD -->
+            <thead class="bg-surface border-b border-gray-700">
+
+                <tr>
+
+                    <th class="text-left px-6 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Saat
+                    </th>
+
+                    <th class="text-left px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Masa
+                    </th>
+
+                    <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Tutar
+                    </th>
+
+                    <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Ödeme Yöntemi
+                    </th>
+
+                    <th class="text-center px-4 py-4 text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Bahşiş
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <!-- TABLE BODY -->
+            <tbody id="payments-table" class="divide-y divide-gray-700">
+
+                {% for payment in today_payments %}
+
+                <tr class="hover:bg-surface transition duration-150">
+
+                    <!-- TIME -->
+                    <td class="px-6 py-5">
+
+                        <div class="flex items-center gap-3 text-gray-300">
+
+                            <div class="w-10 h-10 rounded-xl bg-surface-light border border-gray-700 flex items-center justify-center">
+                                <i class="fas fa-clock text-gray-400"></i>
+                            </div>
+
+                            <span class="font-medium">
+                                {{ payment.created_at.strftime('%H:%M') if payment.created_at else '-' }}
+                            </span>
+
+                        </div>
+
+                    </td>
+
+                    <!-- TABLE -->
+                    <td class="px-4 py-5">
+
+                        <div class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-light text-gray-300">
+
+                            <i class="fas fa-chair text-gray-500"></i>
+
+                            Masa
+                            {{ payment.order.table.table_number if payment.order and payment.order.table else '?' }}
+
+                        </div>
+
+                    </td>
+
+                    <!-- AMOUNT -->
+                    <td class="px-4 py-5 text-center">
+
+                        <span class="text-green-400 font-bold text-lg whitespace-nowrap">
+                            {{ "%.0f"|format(payment.amount) }} ₺
+                        </span>
+
+                    </td>
+
+                    <!-- PAYMENT METHOD -->
+                    <td class="px-4 py-5 text-center">
+
+                        {% if payment.payment_method.value == 'cash' %}
+
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/15 text-green-400 text-sm font-medium">
+                            <i class="fas fa-money-bill-wave"></i>
+                            Nakit
+                        </span>
+
+                        {% elif payment.payment_method.value == 'credit_card' %}
+
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/15 text-blue-400 text-sm font-medium">
+                            <i class="fas fa-credit-card"></i>
+                            Kredi Kartı
+                        </span>
+
+                        {% elif payment.payment_method.value == 'debit_card' %}
+
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/15 text-purple-400 text-sm font-medium">
+                            <i class="fas fa-wallet"></i>
+                            Banka Kartı
+                        </span>
+
+                        {% else %}
+
+                        <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-500/15 text-gray-400 text-sm font-medium">
+                            <i class="fas fa-wallet"></i>
+                            {{ payment.payment_method.value }}
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- TIP -->
+                    <td class="px-4 py-5 text-center">
+
+                        {% if payment.tip and payment.tip > 0 %}
+
+                        <span class="inline-flex items-center gap-2 text-yellow-400 font-semibold">
+
+                            <i class="fas fa-coins"></i>
+
+                            {{ "%.0f"|format(payment.tip) }} ₺
+
+                        </span>
+
+                        {% else %}
+
+                        <span class="text-gray-500">
+                            -
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+                {% if not today_payments %}
+
+                <tr>
+
+                    <td colspan="5" class="py-16 text-center">
+
+                        <div class="flex flex-col items-center">
+
+                            <div class="w-20 h-20 rounded-2xl bg-surface-light border border-gray-700 flex items-center justify-center mb-4">
+                                <i class="fas fa-receipt text-3xl text-gray-500"></i>
+                            </div>
+
+                            <h3 class="text-lg font-semibold text-white mb-2">
+                                Henüz ödeme yok
+                            </h3>
+
+                            <p class="text-gray-400">
+                                Bugün alınan bir ödeme bulunmuyor.
+                            </p>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Bugünkü ciroyu çek
+fetch('/payments/api/today-summary')
+    .then(response => response.json())
+    .then(data => {
+        document.getElementById('today-revenue').textContent = data.total_revenue.toFixed(0) + ' ₺';
+        document.getElementById('today-cost').textContent = data.total_cost.toFixed(0) + ' ₺';
+        document.getElementById('today-profit').textContent = data.net_profit.toFixed(0) + ' ₺';
+    });
+</script>
+{% endblock %}

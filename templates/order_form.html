@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}Yeni Sipariş - {{ app_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .category-btn.active {
+        background-color: #e94560;
+        color: white;
+    }
+    .product-card.selected {
+        border-color: #e94560;
+        background-color: rgba(233, 69, 96, 0.1);
+    }
+    .quantity-input::-webkit-inner-spin-button,
+    .quantity-input::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-4">
+            <a href="/tables" class="text-gray-400 hover:text-white transition">
+                <i class="fas fa-arrow-left text-xl"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-white">Yeni Sipariş</h1>
+                <p class="text-gray-400">Masa {{ table.table_number }} - {{ table.section }}</p>
+            </div>
+        </div>
+        <div class="bg-secondary px-4 py-2 rounded-lg border border-gray-700">
+            <span class="text-gray-400 text-sm">Kapasite: </span>
+            <span class="text-white font-semibold">{{ table.capacity }} kişi</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Panel: Categories & Products -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Categories -->
+            <div class="bg-secondary rounded-xl border border-gray-700 p-4">
+                <div class="flex space-x-2 overflow-x-auto pb-2" id="category-buttons">
+                    <button class="category-btn active px-4 py-2 rounded-lg bg-surface text-gray-300 hover:bg-surface-light transition whitespace-nowrap" 
+                            data-category="all">
+                        Tümü
+                    </button>
+                    {% set categories = products|map(attribute='category')|unique|list %}
+                    {% for category in categories %}
+                    <button class="category-btn px-4 py-2 rounded-lg bg-surface text-gray-300 hover:bg-surface-light transition whitespace-nowrap" 
+                            data-category="{{ category.id }}">
+                        {{ category.name }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Products Grid -->
+            <div class="bg-secondary rounded-xl border border-gray-700 p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">Ürünler</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="products-grid">
+                    {% for product in products %}
+                    <div class="product-card bg-surface rounded-xl border border-gray-700 p-4 cursor-pointer hover:border-primary/50 transition-all duration-200"
+                         data-category="{{ product.category_id }}"
+                         data-product-id="{{ product.id }}"
+                         data-product-name="{{ product.name }}"
+                         data-product-price="{{ product.price }}"
+                         onclick="toggleProduct(this)">
+
+                        <div class="w-full h-32 bg-secondary rounded-lg mb-3 flex items-center justify-center">
+                            <i class="fas fa-utensils text-4xl text-gray-600"></i>
+                        </div>
+
+                        <h4 class="text-white font-medium mb-1">{{ product.name }}</h4>
+                        <p class="text-gray-400 text-sm mb-2 line-clamp-2">{{ product.description or '' }}</p>
+
+                        <div class="flex justify-between items-center">
+                            <span class="text-primary font-bold text-lg">{{ "%.0f"|format(product.price) }} ₺</span>
+                            <span class="text-xs text-gray-500">{{ product.prep_time }} dk</span>
+                        </div>
+
+                        <!-- Selected Indicator -->
+                        <div class="selected-indicator hidden mt-3 pt-3 border-t border-gray-700">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <button type="button" onclick="event.stopPropagation(); changeQuantity(this, -1)" 
+                                            class="w-8 h-8 rounded-lg bg-surface-light text-white hover:bg-primary transition">
+                                        <i class="fas fa-minus text-sm"></i>
+                                    </button>
+                                    <input type="number" value="1" min="1" 
+                                           class="quantity-input w-12 text-center bg-transparent text-white font-semibold"
+                                           onchange="updateCart()" onclick="event.stopPropagation()">
+                                    <button type="button" onclick="event.stopPropagation(); changeQuantity(this, 1)" 
+                                            class="w-8 h-8 rounded-lg bg-surface-light text-white hover:bg-primary transition">
+                                        <i class="fas fa-plus text-sm"></i>
+                                    </button>
+                                </div>
+                                <button onclick="event.stopPropagation(); removeFromCart(this)" 
+                                        class="text-red-400 hover:text-red-300 transition">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <input type="text" placeholder="Özel istek..." 
+                                   class="mt-2 w-full px-3 py-2 bg-surface rounded-lg text-sm text-white placeholder-gray-500 border border-gray-600 focus:border-primary focus:outline-none"
+                                   onclick="event.stopPropagation()">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Cart -->
+        <div class="lg:col-span-1">
+            <div class="bg-secondary rounded-xl border border-gray-700 p-6 sticky top-20">
+                <h3 class="text-lg font-semibold text-white mb-4">Sipariş Özeti</h3>
+
+                <!-- Cart Items -->
+                <div id="cart-items" class="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                    <div class="text-center text-gray-500 py-8" id="empty-cart">
+                        <i class="fas fa-shopping-basket text-3xl mb-2"></i>
+                        <p class="text-sm">Henüz ürün seçilmedi</p>
+                    </div>
+                </div>
+
+                <!-- Cart Summary -->
+                <div class="border-t border-gray-700 pt-4 space-y-2">
+                    <div class="flex justify-between text-gray-400">
+                        <span>Ara Toplam</span>
+                        <span id="subtotal">0 ₺</span>
+                    </div>
+                    <div class="flex justify-between text-gray-400">
+                        <span>KDV (%8)</span>
+                        <span id="tax">0 ₺</span>
+                    </div>
+                    <div class="flex justify-between text-white font-bold text-lg pt-2 border-t border-gray-700">
+                        <span>Toplam</span>
+                        <span id="total">0 ₺</span>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="mt-4">
+                    <textarea id="order-notes" placeholder="Sipariş notu..." 
+                              class="w-full px-3 py-2 bg-surface rounded-lg text-sm text-white placeholder-gray-500 border border-gray-600 focus:border-primary focus:outline-none resize-none"
+                              rows="2"></textarea>
+                </div>
+
+                <!-- Submit Button -->
+                <button onclick="submitOrder()" id="submit-btn"
+                        class="mt-4 w-full bg-primary hover:bg-primary/90 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    Siparişi Gönder
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let cart = [];
+
+function toggleProduct(card) {
+    const productId = card.dataset.productId;
+    const isSelected = card.classList.contains('selected');
+
+    if (isSelected) {
+        card.classList.remove('selected');
+        card.querySelector('.selected-indicator').classList.add('hidden');
+        removeFromCartById(productId);
+    } else {
+        card.classList.add('selected');
+        card.querySelector('.selected-indicator').classList.remove('hidden');
+        addToCart(card);
+    }
+}
+
+function addToCart(card) {
+    const productId = card.dataset.productId;
+    const name = card.dataset.productName;
+    const price = parseFloat(card.dataset.productPrice);
+    const quantity = parseInt(card.querySelector('.quantity-input').value);
+    const notes = card.querySelector('input[type="text"]').value;
+
+    const existingItem = cart.find(item => item.product_id == productId);
+    if (existingItem) {
+        existingItem.quantity = quantity;
+        existingItem.notes = notes;
+    } else {
+        cart.push({
+            product_id: parseInt(productId),
+            name: name,
+            price: price,
+            quantity: quantity,
+            notes: notes
+        });
+    }
+
+    updateCartUI();
+}
+
+function removeFromCart(btn) {
+    const card = btn.closest('.product-card');
+    const productId = card.dataset.productId;
+    removeFromCartById(productId);
+    card.classList.remove('selected');
+    card.querySelector('.selected-indicator').classList.add('hidden');
+}
+
+function removeFromCartById(productId) {
+    cart = cart.filter(item => item.product_id != productId);
+    updateCartUI();
+}
+
+function changeQuantity(btn, delta) {
+    const input = btn.parentElement.querySelector('.quantity-input');
+    let value = parseInt(input.value) + delta;
+    if (value < 1) value = 1;
+    input.value = value;
+
+    const card = btn.closest('.product-card');
+    if (card.classList.contains('selected')) {
+        addToCart(card);
+    }
+}
+
+function updateCartUI() {
+    const cartContainer = document.getElementById('cart-items');
+    const emptyCart = document.getElementById('empty-cart');
+
+    if (cart.length === 0) {
+        cartContainer.innerHTML = `
+            <div class="text-center text-gray-500 py-8" id="empty-cart">
+                <i class="fas fa-shopping-basket text-3xl mb-2"></i>
+                <p class="text-sm">Henüz ürün seçilmedi</p>
+            </div>
+        `;
+        document.getElementById('submit-btn').disabled = true;
+    } else {
+        emptyCart?.remove();
+        cartContainer.innerHTML = cart.map(item => `
+            <div class="flex justify-between items-center p-3 bg-surface rounded-lg">
+                <div>
+                    <p class="text-white font-medium">${item.name}</p>
+                    <p class="text-gray-400 text-sm">${item.quantity} x ${item.price} ₺</p>
+                    ${item.notes ? `<p class="text-yellow-400 text-xs"><i class="fas fa-sticky-note mr-1"></i>${item.notes}</p>` : ''}
+                </div>
+                <p class="text-white font-semibold">${(item.quantity * item.price).toFixed(0)} ₺</p>
+            </div>
+        `).join('');
+        document.getElementById('submit-btn').disabled = false;
+    }
+
+    // Calculate totals
+    const subtotal = cart.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    const tax = subtotal * 0.08;
+    const total = subtotal + tax;
+
+    document.getElementById('subtotal').textContent = subtotal.toFixed(0) + ' ₺';
+    document.getElementById('tax').textContent = tax.toFixed(0) + ' ₺';
+    document.getElementById('total').textContent = total.toFixed(0) + ' ₺';
+}
+
+// Category filter
+document.querySelectorAll('.category-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const category = btn.dataset.category;
+        document.querySelectorAll('.product-card').forEach(card => {
+            if (category === 'all' || card.dataset.category === category) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+});
+
+function submitOrder() {
+    if (cart.length === 0) {
+        showToast('Lütfen en az bir ürün seçin', 'warning');
+        return;
+    }
+
+    const items = cart.map(item => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        notes: item.notes
+    }));
+
+    const formData = new FormData();
+    formData.append('table_id', '{{ table.id }}');
+    formData.append('items', JSON.stringify(items));
+    formData.append('notes', document.getElementById('order-notes').value);
+
+    fetch('/orders/api/create', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Sipariş başarıyla oluşturuldu!', 'success');
+            setTimeout(() => {
+                window.location.href = '/orders';
+            }, 1500);
+        } else {
+            showToast('Bir hata oluştu', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Sipariş gönderilemedi', 'error');
+    });
+}
+</script>
+{% endblock %}
